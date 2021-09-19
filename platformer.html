@@ -1,0 +1,263 @@
+<html>
+  <body>
+    <canvas width="1200" height="800" id="canvas">             
+    </canvas>
+    
+  </body>
+  <script>
+
+    class Rectangle {
+      constructor(x, y, w , h, image) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+            this.image = image;
+        }
+    }
+    var lowestY = canvas.height;
+    var time = 0;
+    var platforms = [];
+    var cheeses = [];
+    var cats = [];
+
+    const velocity = 12;
+
+    const platW = 150, platH = 50;
+    var score = 0;
+    var offsetX = 0, offsetY = 0;
+    const size = 40;
+    const accell = 50;
+    var x = 0, y = 100, px = 0, py = 0;
+    
+    var isInAir = true;
+    const gravity = 1;
+    var ground = 500;
+    var angle = 0;
+
+    const img = new Image();
+    const catImg = new Image();
+    const characterImageLeft = new Image();
+    const characterImageRight = new Image();
+    const cheeseImg = new Image();
+    const background = new Image();
+
+    characterImageLeft.src = "mouseLeft.png";
+    characterImageRight.src = "mouseRight.png";
+    
+    background.src = "background.webp";
+    catImg.src = "cat.png";
+    cheeseImg.src = "cheese.webp";
+    img.src = "plat.png";
+    
+    function initPlatforms(offset){
+        
+        const tileWidth = canvas.width/platW;
+        const tileHeight = canvas.height/platH;
+        
+        for(let i = 0; i < tileHeight; i += 2){
+            let rand = getRandomInt(0, 5);
+            if(rand > 5 + 5*canvas.height/(offsetY+1)){
+                continue;
+            }
+            let y = i;
+            let x = getRandomInt(0, tileWidth);
+            
+            if(getRandomInt(0, 3) == 1){
+                cheeses.push(new Rectangle(x * platW + 50, (y - 1) * platH + 40 + offset - canvas.height, 40, 40, cheeseImg));
+            }
+            
+            platforms.push(new Rectangle(x * platW, y * platH + offset - canvas.height, platW, platH, img));
+            
+            let rnd = getRandomInt(0, 5);
+            if(rnd != 1){
+                continue;
+            }
+            cats.push(new Rectangle(x * platW + 50, (y - 1) * platH + offset - canvas.height, 100, 100, catImg));
+        }
+    }
+
+    function renderPlatforms(){
+        
+        for(let i = 0; i < platforms.length; i++){
+            let platform = platforms[i];
+            ctx.drawImage(platform.image, platform.x, platform.y, platW, platH);
+        }
+        for(let i = 0; i < cheeses.length; i++){
+            let cheese = cheeses[i];
+            ctx.drawImage(cheeseImg, cheese.x, cheese.y, 40, 40);
+        }
+
+        for(let i = 0; i < cats.length; i++){
+            let cat = cats[i];
+            ctx.drawImage(catImg, cat.x, cat.y, 100, 100);
+        }
+    }
+
+    initPlatforms(0);
+    initPlatforms(canvas.height);
+
+    var c = document.getElementById("canvas");
+    var ctx = c.getContext("2d");
+
+    var isLeftKeyPessed = false, isRightKeyPressed = false, isUpKeyPressed = false;
+    function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    var right = true;
+
+    function renderCharacter(){
+        ctx.beginPath();
+        ctx.save();
+        if(right){
+            ctx.drawImage(characterImageLeft, x, y, 90, 50);            
+        }else{
+            ctx.drawImage(characterImageRight, x, y, 90, 50);
+        }
+        ctx.closePath();        
+        ctx.restore();
+    }
+
+    var lastPage = 0;
+    var currPage = 0;
+    
+    function render() {        
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        // clear the viewport
+        ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);
+        
+        ctx.beginPath();
+        // ctx.clearRect(-offsetX, -offsetY, canvas.width, canvas.height);
+        ctx.fillStyle = "#f2f2f2";
+        ctx.drawImage(background, -offsetX, -offsetY, 1250, 780);
+        
+        ctx.closePath();
+
+        time++;
+        score++;
+            currPage = Math.ceil(offsetY / canvas.height);
+        
+        if(lastPage - currPage == -1){
+            initPlatforms(-(currPage)* canvas.height);
+        }
+        lastPage = currPage;
+
+        renderPlatforms();
+    
+        ctx.fillText("score: " + offsetY/100 + "", 10, -offsetY + 100);
+        
+        if(isLeftKeyPessed) {
+            px = -velocity;
+        } else if(isRightKeyPressed) {
+            px = velocity;
+        }else{
+            px = 0;
+        }
+        
+        x += px;
+        y += py;
+        
+        if(y > -offsetY + canvas.height){
+            alert("GAME OVER");
+            location.reload();
+        }
+
+        if(y < -offsetY + 300 && py < 0){
+            offsetY -= py;
+        }
+
+        if(lowestY > y){
+            lowestY = y;
+        }
+
+        if(!isInAir){
+            px *= 0;
+        }else{
+            py += gravity;
+        }
+
+        isInAir = true;
+
+        for(let i = 0; i < platforms.length; i++){
+            var rect = platforms[i];
+            
+            var X = x + size;
+            var Y = y + size;
+
+            if(X > rect.x && X < rect.x + rect.w + size && Y > rect.y + 20 && Y < rect.y + rect.h){
+                if(lowestY + size < rect.y + 20){    
+                    y = rect.y - size + 20;
+                    isInAir = false;
+                    py = -30;
+                    lowestY = rect.y - 1 - size + 20;
+                }
+            }
+        }
+
+        var toRemove = [];
+
+        for(let i = 0; i < cheeses.length; i++){
+            var rect = cheeses[i];
+            
+            var X = x + size;
+            var Y = y + size;
+            
+            if(X > rect.x && X < rect.x + rect.w + size && Y > rect.y && Y < rect.y + rect.h){
+                toRemove.push(i);
+            }
+        }
+        for(let i of toRemove){
+            cheeses.splice(i, 1);
+        }
+        toRemove = [];
+
+        for(let i = 0; i < platforms.length; i++){
+            let platform = platforms[i];
+
+            if(platform.y > -offsetY + canvas.height){
+                toRemove.push(i);
+            }
+        }
+
+        for(let i of toRemove){
+            platforms.splice(i, 1);
+        }
+
+        renderCharacter();
+        ctx.restore();
+    }
+
+    document.onkeydown = function logKey(e) {
+        if (e.keyCode == 37) {
+            right = false;
+            isLeftKeyPessed = true;
+        } else if (e.keyCode == 38) {
+            if(!isInAir){
+                py = -30;
+            }
+        } else if (e.keyCode == 39) {
+            right = true;
+            isRightKeyPressed = true;
+        }
+    }
+
+    document.onkeyup = function logKey(e) {
+        if (e.keyCode == 37) {
+            isLeftKeyPessed = false;
+        } else if (e.keyCode == 38) {
+            // if(py < - 10) {
+            //     py= -10;
+            // }
+            isUpKeyPressed = false;
+        } else if (e.keyCode == 39) {
+            isRightKeyPressed = false;
+        }
+    }
+
+    window.setInterval(render, 1000/24);
+
+  </script>
+</html>
